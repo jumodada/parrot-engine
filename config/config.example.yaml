@@ -1,0 +1,144 @@
+# Python Persona Engine 示例配置文件
+# 复制此文件为 config.yaml 并修改相应设置
+
+# 窗口设置
+window:
+  width: 1920
+  height: 1080
+  title: "Python Persona Engine"
+  fullscreen: false
+
+# 大语言模型设置
+llm:
+  text_provider: "openai"  # openai, anthropic, local, ollama
+  text_api_key: "sk-your-api-key-here"  # 请替换为您的API密钥
+  text_model: "gpt-4"
+  text_endpoint: "https://api.openai.com/v1"
+  
+  # 视觉模型 (可选)
+  vision_provider: "openai"
+  vision_api_key: "sk-your-api-key-here"
+  vision_model: "gpt-4-vision-preview"
+  vision_endpoint: "https://api.openai.com/v1"
+
+# 语音识别设置
+asr:
+  model: "base"  # tiny, base, small, medium, large
+  language: "zh"  # zh, en, auto
+  vad_threshold: 0.5
+  vad_threshold_gap: 0.15
+  min_speech_duration: 150  # ms
+  min_silence_duration: 450  # ms
+  device: "auto"  # auto, cuda, cpu
+
+# 麦克风设置
+microphone:
+  device_name: ""  # 空字符串使用默认设备
+  sample_rate: 16000
+  channels: 1
+  chunk_size: 1024
+
+# 文本转语音设置
+tts:
+  engine: "coqui"  # coqui, espeak, azure, elevenlabs
+  voice: "en_custom_2"
+  speed: 1.0
+  sample_rate: 24000
+  
+  # Coqui TTS 设置
+  coqui:
+    model_path: "tts_models/multilingual/multi-dataset/xtts_v2"
+    speaker_wav: ""  # 可选的说话者音频文件
+    
+  # ElevenLabs 设置 (可选)
+  elevenlabs:
+    api_key: ""
+    voice_id: ""
+    
+  # Azure 设置 (可选)  
+  azure:
+    api_key: ""
+    region: ""
+    voice_name: ""
+
+# 字幕设置
+subtitle:
+  font: "Arial"
+  font_size: 32
+  color: "#FFFFFF"
+  highlight_color: "#FF6B6B"
+  bottom_margin: 100
+  side_margin: 30
+  max_visible_lines: 2
+  animation_duration: 0.3
+  stroke_thickness: 2
+  width: 1080
+  height: 200
+
+# Live2D设置
+live2d:
+  enabled: true
+  model_path: "resources/live2d/aria"
+  model_name: "aria"
+  width: 1080
+  height: 1920
+  scale: 1.0
+  
+  # 动画设置
+  animation:
+    idle_blink_interval: 3.0  # 秒
+    emotion_duration: 2.0     # 秒
+    lipsync_strength: 1.0
+
+# 视觉识别设置 (可选)
+vision:
+  enabled: false
+  window_title: ""  # 要捕获的窗口标题
+  capture_interval: 60  # 秒
+  min_pixels: 50176
+  max_pixels: 4194304
+
+# 对话设置
+conversation:
+  barge_in_enabled: true
+  barge_in_min_words: 3
+  max_history_turns: 10
+  system_prompt_file: "config/personality.txt"
+  current_context: "你是一个友善的AI助手角色。"
+  topics:
+    - "日常对话"
+    - "技术讨论"
+
+# 音频输出设置
+audio:
+  output_device: ""  # 空字符串使用默认设备
+  volume: 0.8
+  sample_rate: 24000
+  buffer_size: 1024
+
+# 日志设置
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_file: "logs/persona_engine.log"
+  max_file_size: "10MB"
+  backup_count: 5
+
+# 性能设置
+performance:
+  max_workers: 4
+  gpu_memory_fraction: 0.8
+  enable_mixed_precision: true
+  
+# UI设置
+ui:
+  theme: "dark"  # light, dark
+  transparency: 0.95
+  always_on_top: false
+  show_metrics: true
+
+# 插件设置 (扩展功能)
+plugins:
+  enabled: []
+  # - "screen_capture"
+  # - "voice_cloning" 
+  # - "emotion_analysis" 
