@@ -1,159 +1,173 @@
 #!/usr/bin/env python3
 """
-Python Persona Engine 简单运行示例
-用于演示基本功能，无需复杂配置
+Python Persona Engine 示例脚本
+用于展示基本功能和测试安装
 """
 
 import asyncio
+import os
 import sys
-from pathlib import Path
+import random
+from typing import List, Dict
+import tkinter as tk
+from tkinter import scrolledtext
+import threading
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, str(Path(__file__).parent))
-
-from src.core.avatar_engine import AvatarEngine, EngineState
-from src.utils.config import Config
-from loguru import logger
-
-
-async def simple_text_chat():
-    """简单的文本聊天示例"""
-    print("🎭 Python Persona Engine - 文本聊天示例")
-    print("=" * 50)
-    
-    # 创建最小配置
-    config = Config()
-    
-    # 设置基本参数（使用默认值，无需外部服务）
-    config.llm.text_provider = "local"  # 模拟本地模式
-    config.live2d.enabled = False  # 禁用Live2D以简化示例
-    config.asr.device = "cpu"  # 使用CPU模式
-    
-    # 创建引擎
-    engine = AvatarEngine(config)
-    
-    print("🚀 正在初始化引擎...")
-    
-    try:
-        # 初始化引擎（跳过需要外部服务的部分）
-        # 这里只是演示架构，实际运行需要配置API密钥
-        print("ℹ️  注意：这是一个架构演示，实际运行需要配置API密钥")
-        print("📝 请参考 config/config.example.yaml 进行完整配置")
-        
-        # 模拟对话
-        conversation = [
-            "你好！",
-            "你能做什么？",
-            "今天天气怎么样？",
-            "再见！"
-        ]
-        
-        print("\n💬 模拟对话演示:")
-        print("-" * 30)
-        
-        for message in conversation:
-            print(f"👤 用户: {message}")
-            
-            # 模拟处理延迟
-            await asyncio.sleep(0.5)
-            
-            # 模拟回复（在实际使用中这会调用LLM）
-            responses = {
-                "你好！": "[EMOTION:happy] 你好！我是Aria，很高兴见到你！",
-                "你能做什么？": "[EMOTION:thinking] 我可以和你聊天，回答问题，还能通过表情和动作表达情感哦！",
-                "今天天气怎么样？": "[EMOTION:shy] 抱歉，我无法查看实时天气信息，但我可以陪你聊其他话题！",
-                "再见！": "[EMOTION:sad] 再见！希望很快能再次见到你！"
-            }
-            
-            response = responses.get(message, "[EMOTION:neutral] 有趣的问题，让我想想...")
-            print(f"🤖 Aria: {response}")
-            print()
-            
-            await asyncio.sleep(1)
-        
-        print("✨ 演示完成！")
-        print("\n📖 完整功能体验:")
-        print("1. 配置 config/config.yaml 中的API密钥")
-        print("2. 运行 python main.py 启动完整版本")
-        print("3. 查看 README.md 了解更多功能")
-        
-    except Exception as e:
-        logger.error(f"演示运行失败: {e}")
-        print(f"❌ 演示失败: {e}")
+try:
+    import customtkinter as ctk
+except ImportError:
+    print("未安装customtkinter，使用标准tkinter")
+    ctk = None
 
 
-async def show_features():
-    """展示主要功能特性"""
-    print("\n🌟 Python Persona Engine 主要功能:")
-    print("=" * 50)
+def simple_text_chat():
+    """简单的文本聊天演示"""
     
-    features = [
-        "🎤 实时语音识别 - 基于OpenAI Whisper",
-        "🧠 智能对话系统 - 支持多种LLM后端",
-        "🗣️ 自然语音合成 - 多种TTS引擎选择",
-        "🎭 Live2D角色动画 - 表情和动作同步",
-        "🎮 打断检测 - 自然的对话体验",
-        "🖥️ 现代化界面 - 直观的控制面板",
-        "⚙️ 灵活配置 - 完全可定制",
-        "🔌 插件系统 - 可扩展架构"
+    # 预设回复
+    responses = [
+        "很高兴能和你聊天！",
+        "我是Python Persona Engine的示例角色。我还没有连接到真正的AI引擎。",
+        "如果你想使用完整功能，请配置config.yaml中的API密钥。",
+        "我可以模拟对话、语音识别和文本转语音等功能。",
+        "这只是个简单演示，完整引擎支持Live2D角色动画！",
+        "有关如何设置和使用的详细信息，请查看README.md。",
+        "你可以使用OpenAI、Anthropic或本地的LLM模型作为我的大脑。"
     ]
     
-    for i, feature in enumerate(features, 1):
-        print(f"{i:2d}. {feature}")
-        await asyncio.sleep(0.2)
+    # 创建简单UI
+    root = ctk.CTk() if ctk else tk.Tk()
+    root.title("Python Persona Engine 演示")
+    root.geometry("600x800")
     
-    print("\n🏗️ 系统架构:")
-    print("┌─────────────┐    ┌─────────────┐    ┌─────────────┐")
-    print("│   语音输入   │───▶│   ASR模块   │───▶│  文本处理   │")
-    print("└─────────────┘    └─────────────┘    └─────────────┘")
-    print("                                             │")
-    print("┌─────────────┐    ┌─────────────┐    ┌─────────────┐")
-    print("│  Live2D动画  │◀───│   TTS模块   │◀───│   LLM引擎   │")
-    print("└─────────────┘    └─────────────┘    └─────────────┘")
-    print("       │                   │")
-    print("┌─────────────┐    ┌─────────────┐")
-    print("│   视觉输出   │    │   音频输出   │")
-    print("└─────────────┘    └─────────────┘")
+    frame = ctk.CTkFrame(root) if ctk else tk.Frame(root)
+    frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+    
+    # 对话区域
+    chat_label = ctk.CTkLabel(frame, text="聊天记录") if ctk else tk.Label(frame, text="聊天记录")
+    chat_label.pack(pady=(0, 5), anchor="w")
+    
+    chat_area = scrolledtext.ScrolledText(frame, wrap=tk.WORD, height=20)
+    chat_area.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+    chat_area.insert(tk.END, "助手: 你好！我是Python Persona Engine的示例角色。请输入消息与我聊天。\n\n")
+    chat_area.config(state=tk.DISABLED)
+    
+    # 输入区域
+    input_label = ctk.CTkLabel(frame, text="输入消息") if ctk else tk.Label(frame, text="输入消息")
+    input_label.pack(pady=(0, 5), anchor="w")
+    
+    input_area = ctk.CTkTextbox(frame, height=80) if ctk else tk.Text(frame, height=4)
+    input_area.pack(fill=tk.X, pady=(0, 10))
+    
+    # 状态区域
+    status_var = tk.StringVar()
+    status_var.set("准备就绪")
+    status_label = ctk.CTkLabel(frame, textvariable=status_var) if ctk else tk.Label(frame, textvariable=status_var)
+    status_label.pack(pady=5)
+    
+    # 发送函数
+    def send_message():
+        msg = input_area.get("1.0", tk.END).strip()
+        if not msg:
+            return
+            
+        # 禁用输入
+        input_area.config(state=tk.DISABLED)
+        status_var.set("思考中...")
+        
+        # 更新聊天记录
+        chat_area.config(state=tk.NORMAL)
+        chat_area.insert(tk.END, f"用户: {msg}\n\n")
+        chat_area.see(tk.END)
+        chat_area.config(state=tk.DISABLED)
+        
+        # 清空输入
+        input_area.delete("1.0", tk.END)
+        
+        # 模拟处理延迟
+        def delayed_response():
+            response = random.choice(responses)
+            
+            chat_area.config(state=tk.NORMAL)
+            chat_area.insert(tk.END, f"助手: {response}\n\n")
+            chat_area.see(tk.END)
+            chat_area.config(state=tk.DISABLED)
+            
+            status_var.set("准备就绪")
+            input_area.config(state=tk.NORMAL)
+            input_area.focus()
+            
+        # 模拟延迟
+        threading.Timer(1.0, delayed_response).start()
+    
+    # 按钮
+    button_frame = ctk.CTkFrame(frame) if ctk else tk.Frame(frame)
+    button_frame.pack(fill=tk.X, pady=10)
+    
+    send_button = ctk.CTkButton(button_frame, text="发送", command=send_message) if ctk else tk.Button(button_frame, text="发送", command=send_message)
+    send_button.pack(side=tk.RIGHT)
+    
+    quit_button = ctk.CTkButton(button_frame, text="退出", command=root.destroy) if ctk else tk.Button(button_frame, text="退出", command=root.destroy)
+    quit_button.pack(side=tk.LEFT)
+    
+    # 绑定回车键
+    input_area.bind("<Return>", lambda event: send_message())
+    
+    root.mainloop()
+
+
+def show_features():
+    """展示功能列表"""
+    print("\n🎭 Python Persona Engine 功能列表")
+    print("=" * 40)
+    
+    features = [
+        ("🗣️ 语音交互", "使用Whisper语音识别和TTS语音合成"),
+        ("🧠 大语言模型", "支持OpenAI, Anthropic, Ollama等"),
+        ("👁️ 视觉感知", "可以看到并理解屏幕内容"),
+        ("😀 Live2D动画", "生动的角色表情和口型同步"),
+        ("🎛️ 控制面板", "直观的图形用户界面"),
+        ("⚙️ 灵活配置", "通过YAML文件轻松配置所有功能"),
+    ]
+    
+    for title, desc in features:
+        print(f"{title}: {desc}")
+    
+    print("\n要启用完整功能，请配置config.yaml文件中的API密钥。")
 
 
 def print_requirements():
     """打印系统要求"""
-    print("\n📋 系统要求:")
-    print("=" * 30)
-    print("• Python 3.9+")
-    print("• NVIDIA GPU (推荐，用于AI加速)")
-    print("• 4GB+ RAM")
-    print("• 麦克风和扬声器")
-    print("• API密钥 (OpenAI/Anthropic等)")
-    
-    print("\n🔧 依赖组件:")
-    print("• OpenAI Whisper - 语音识别")
-    print("• Coqui TTS - 语音合成")
-    print("• PyAudio - 音频处理")
-    print("• CustomTkinter - 现代UI")
-    print("• NumPy/SciPy - 数值计算")
+    print("\n🖥️ 系统要求")
+    print("=" * 40)
+    print("- Python 3.9+")
+    print("- 推荐NVIDIA GPU (用于语音识别、Live2D渲染)")
+    print("- 以下系统依赖:")
+    print("  • espeak-ng: 用于基本TTS")
+    print("  • ffmpeg: 用于音频处理")
+    print("\n要安装系统依赖:")
+    print("- macOS: brew install espeak-ng ffmpeg")
+    print("- Ubuntu/Debian: sudo apt-get install espeak-ng ffmpeg")
+    print("- Windows: 请参考QUICKSTART.md中的安装说明")
 
 
-async def main():
+def main():
     """主函数"""
-    try:
-        # 展示功能特性
-        await show_features()
-        
-        # 运行文本聊天演示
-        await simple_text_chat()
-        
-        # 显示系统要求
-        print_requirements()
-        
-        print("\n🎉 感谢体验 Python Persona Engine!")
-        print("🔗 原版项目: https://github.com/fagenorn/handcrafted-persona-engine")
-        
-    except KeyboardInterrupt:
-        print("\n👋 再见!")
-    except Exception as e:
-        print(f"\n❌ 运行出错: {e}")
+    print("🎭 Python Persona Engine 示例脚本")
+    
+    # 显示功能列表
+    show_features()
+    
+    # 显示系统要求
+    print_requirements()
+    
+    # 检查是否有命令行参数
+    if len(sys.argv) > 1 and sys.argv[1] == "--no-ui":
+        return
+    
+    # 运行简单演示
+    print("\n启动聊天演示界面...")
+    simple_text_chat()
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    main() 

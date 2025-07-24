@@ -130,6 +130,12 @@ class Live2DManager:
     async def _load_model(self):
         """加载Live2D模型"""
         try:
+            # 确保model_path存在且不为None
+            if not self.model_path or not self.model_path.exists():
+                logger.warning(f"模型路径不存在或无效: {self.model_path}")
+                self._create_placeholder_model()
+                return
+            
             # 查找model3.json文件
             model_files = list(self.model_path.glob("*.model3.json"))
             if not model_files:

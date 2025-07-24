@@ -8,7 +8,7 @@ import numpy as np
 import pyaudio
 import threading
 import queue
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Union, Any
 from loguru import logger
 import time
 import wave
@@ -143,7 +143,9 @@ class AudioManager:
             if self.microphone_config.device_name:
                 for i in range(self.pyaudio_instance.get_device_count()):
                     device_info = self.pyaudio_instance.get_device_info_by_index(i)
-                    if (self.microphone_config.device_name.lower() in device_info['name'].lower() and
+                    # 确保device_info['name']是字符串
+                    device_name = str(device_info.get('name', ''))
+                    if (self.microphone_config.device_name.lower() in device_name.lower() and
                         device_info['maxInputChannels'] > 0):
                         return i
                         
@@ -151,7 +153,7 @@ class AudioManager:
             
             # 使用默认输入设备
             default_device = self.pyaudio_instance.get_default_input_device_info()
-            return default_device['index']
+            return int(default_device['index'])
             
         except Exception as e:
             logger.error(f"获取输入设备失败: {e}")
@@ -167,7 +169,9 @@ class AudioManager:
             if self.audio_config.output_device:
                 for i in range(self.pyaudio_instance.get_device_count()):
                     device_info = self.pyaudio_instance.get_device_info_by_index(i)
-                    if (self.audio_config.output_device.lower() in device_info['name'].lower() and
+                    # 确保device_info['name']是字符串
+                    device_name = str(device_info.get('name', ''))
+                    if (self.audio_config.output_device.lower() in device_name.lower() and
                         device_info['maxOutputChannels'] > 0):
                         return i
                         
@@ -175,7 +179,7 @@ class AudioManager:
             
             # 使用默认输出设备
             default_device = self.pyaudio_instance.get_default_output_device_info()
-            return default_device['index']
+            return int(default_device['index'])
             
         except Exception as e:
             logger.error(f"获取输出设备失败: {e}")

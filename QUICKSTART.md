@@ -1,214 +1,151 @@
-# 🚀 Python Persona Engine 快速开始指南
+# 🎭 Python Persona Engine 快速入门指南
 
-## 方式一：快速体验（推荐新手）
+这是一个简明的入门指南，帮助您快速设置并运行 Python Persona Engine。
 
-如果你只想快速体验项目功能，无需复杂配置：
+## 🖥️ 系统要求
+
+- **Python**: 3.9 或更高版本
+- **操作系统**: Windows 10/11, macOS, Linux (Ubuntu 20.04+推荐)
+- **硬件**: 
+  - **CPU模式**: 4GB+ RAM (基础功能，性能有限)
+  - **GPU模式** (推荐): NVIDIA GPU + CUDA 11.8+ (8GB+ VRAM)
+
+## 🚀 快速体验
+
+如果您想快速体验基本功能，可以运行示例脚本：
 
 ```bash
-# 1. 克隆项目
-git clone <your-repo-url>
-cd python-persona-engine
-
-# 2. 安装基础依赖
-pip install loguru asyncio
-
-# 3. 运行演示
 python run_example.py
 ```
 
-## 方式二：完整安装（完整功能）
+这将启动一个简单的聊天界面，展示基本功能。不需要API密钥或完整配置。
 
-### Windows 用户
+## 📦 完整安装
 
-1. **运行自动安装脚本**：
-   ```cmd
-   # 双击运行或在命令行执行
-   scripts\install.bat
-   ```
+### Windows
 
-2. **配置API密钥**：
-   - 编辑 `config\config.yaml`
-   - 设置你的OpenAI API密钥：
-     ```yaml
-     llm:
-       text_api_key: "sk-your-actual-api-key-here"
-     ```
+1. 双击 `scripts/install.bat`，自动化脚本将完成下列操作：
+   - 检查Python版本
+   - 创建虚拟环境
+   - 安装依赖
+   - 创建配置文件
+   - 生成启动脚本
 
-3. **运行程序**：
-   ```cmd
-   run.bat
-   ```
+2. 安装系统依赖：
+   - 下载并安装 [espeak-ng](https://github.com/espeak-ng/espeak-ng/releases)
+   - 下载并安装 [ffmpeg](https://ffmpeg.org/download.html)
 
-### Linux/Mac 用户
+### Linux/macOS
 
-1. **运行自动安装脚本**：
+1. 运行安装脚本：
    ```bash
    chmod +x scripts/install.sh
    ./scripts/install.sh
    ```
 
-2. **配置API密钥**：
-   ```bash
-   # 编辑配置文件
-   nano config/config.yaml
-   # 设置你的API密钥
-   ```
+2. 安装系统依赖：
+   - Ubuntu/Debian: `sudo apt-get install espeak-ng ffmpeg`
+   - macOS: `brew install espeak-ng ffmpeg`
 
-3. **运行程序**：
-   ```bash
-   ./run.sh
-   # 或者
-   python main.py
-   ```
+## 🔧 手动安装
 
-## 方式三：手动安装（开发者）
+如果自动化脚本不适用于您的环境，可以按照以下步骤手动安装：
 
-### 1. 环境准备
+### 1. 创建虚拟环境
 
 ```bash
-# 检查Python版本（需要3.9+）
-python --version
-
-# 创建虚拟环境
 python -m venv venv
-
-# 激活虚拟环境
-# Windows:
+# Windows
 venv\Scripts\activate
-# Linux/Mac:
+# Linux/macOS
 source venv/bin/activate
 ```
 
-### 2. 安装依赖
+### 2. 安装Python依赖
 
 ```bash
-# 升级pip
 pip install --upgrade pip
-
-# 安装基础依赖
 pip install -r requirements.txt
-
-# （可选）安装开发依赖
-pip install -r requirements-dev.txt
-
-# （可选）GPU支持
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
-### 3. 系统依赖
+### 3. 安装系统依赖
 
-**Windows**：
-- 下载并安装 [espeak-ng](https://github.com/espeak-ng/espeak-ng/releases)
+- **espeak-ng**: 用于基础的文本转语音 (TTS)
+- **ffmpeg**: 用于音频处理
 
-**Ubuntu/Debian**：
+### 4. 配置
+
+1. 复制示例配置文件：
+   ```bash
+   cp config/config.example.yaml config/config.yaml
+   ```
+2. 编辑 `config/config.yaml`，设置API密钥和其他选项。
+
+## 🔑 API密钥
+
+完整功能需要以下API密钥（至少需要其中一个）：
+
+- **OpenAI API密钥**: 用于GPT模型和Whisper ASR
+- **Anthropic API密钥**: 用于Claude模型
+- **本地替代方案**: 
+  - Ollama: 运行本地LLM
+  - Whisper.cpp: 本地ASR
+
+## 🖱️ 使用界面
+
+启动控制面板：
+
 ```bash
-sudo apt-get install espeak-ng ffmpeg portaudio19-dev
-```
-
-**macOS**：
-```bash
-brew install espeak-ng ffmpeg portaudio
-```
-
-### 4. 配置设置
-
-```bash
-# 复制配置模板
-cp config/config.example.yaml config/config.yaml
-
-# 编辑配置文件
-# 至少需要设置 LLM API密钥
-```
-
-### 5. 运行程序
-
-```bash
-# UI模式（推荐）
 python main.py
-
-# 命令行模式
-python main.py --no-ui
-
-# 自定义配置
-python main.py --config my_config.yaml
-
-# 调试模式
-python main.py --debug
+# 或使用生成的脚本
+./run.sh  # Linux/macOS
+run.bat   # Windows
 ```
 
-## 🔑 必需的API密钥
+控制面板功能：
+- 启动/停止引擎
+- 监控状态和性能
+- 调整音量和速度
+- 查看对话历史记录
 
-为了完整体验功能，你需要：
+## 🎙️ 语音交互
 
-1. **OpenAI API密钥** (必需)
-   - 访问：https://platform.openai.com/api-keys
-   - 用于：大语言模型对话
-
-2. **其他可选API密钥**：
-   - Anthropic (Claude)
-   - ElevenLabs (高质量TTS)
-   - Azure Speech Services
-
-## 📱 使用界面
-
-程序启动后会显示控制面板，包含：
-
-- **状态监控**：引擎状态、性能指标
-- **控制按钮**：启动/停止引擎、测试功能
-- **聊天界面**：文本对话测试
-- **参数调节**：音量、语速等
-
-## 🎤 语音交互
-
-1. 点击"启动引擎"
-2. 对着麦克风说话
-3. AI会自动：
-   - 识别你的语音
-   - 生成回复
-   - 播放语音回应
-   - 显示Live2D动画（如果启用）
+1. 确保麦克风配置正确
+2. 在控制面板中点击"启动"
+3. 开始对话
+4. 可通过设置调整灵敏度和响应阈值
 
 ## 🎭 Live2D支持
 
-如果要使用Live2D功能：
+要使用Live2D角色：
 
-1. 将Live2D模型放在 `resources/live2d/` 目录
-2. 在配置文件中设置：
-   ```yaml
-   live2d:
-     enabled: true
-     model_path: "resources/live2d/your_model"
-   ```
+1. 获取Live2D模型（.model3.json和相关文件）
+2. 将模型文件放在 `resources/live2d/模型名称/` 目录下
+3. 在配置文件中设置相应的路径
+4. 重启引擎
 
-## ❗ 常见问题
+## ❓ 常见问题
 
-**Q: 程序启动失败**
-- 检查Python版本（需要3.9+）
-- 确保安装了所有依赖
-- 查看日志文件：`logs/persona_engine.log`
+### 安装问题
 
-**Q: 语音识别不工作**
-- 检查麦克风权限
-- 确保麦克风未被其他程序占用
-- 尝试在配置中指定麦克风设备
+- **依赖安装失败**:
+  - 检查Python版本（3.9+）
+  - 尝试逐个安装依赖以识别具体错误
+  - 确保系统依赖已安装（espeak-ng, ffmpeg）
 
-**Q: API调用失败**
-- 检查API密钥是否正确
-- 确保网络连接正常
-- 检查API配额是否用完
+- **GPU相关错误**:
+  - 确保安装了兼容的CUDA版本
+  - 检查GPU驱动是否最新
+  - 尝试使用CPU模式（在配置文件中设置`asr.device: "cpu"`）
 
-**Q: 音频播放问题**
-- 检查扬声器/耳机连接
-- 尝试调整音量设置
-- 检查音频设备权限
+### 运行问题
 
-## 📞 获取帮助
+- **引擎启动失败**:
+  - 检查配置文件是否正确
+  - 查看日志文件获取详细错误信息（logs目录）
+  - 确保所有API密钥都有效
 
-如果遇到问题：
-
-1. 查看 `logs/persona_engine.log` 日志文件
-2. 运行 `python main.py --debug` 获取详细信息
-3. 查看项目README.md
-4. 提交Issue到项目仓库
-
-祝你使用愉快！🎉 
+- **音频问题**:
+  - 检查麦克风和扬声器设置
+  - 尝试在配置中指定设备名称
+  - 调整音量和录音阈值 
