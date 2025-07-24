@@ -30,6 +30,11 @@ opencv-python==4.8.1.78
 Pillow==10.1.0
 pygame==2.5.2
 
+# 推流和视频输出
+pyvirtualcam==0.11.1
+mss==9.0.1
+obs-websocket-py==1.6.1
+
 # UI界面  
 customtkinter==5.2.2
 

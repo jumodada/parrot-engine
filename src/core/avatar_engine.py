@@ -1,398 +1,423 @@
 """
-核心虚拟角色引擎
-负责协调所有模块的运行和交互
+Virtual Avatar Engine - 虚拟数字人核心引擎
+
+基于 HandCrafted Persona Engine 的 Python 实现，集成 Live2D、语音处理、对话管理和推流功能。
 """
 
 import asyncio
+import logging
 import threading
-import time
 from typing import Optional, Dict, Any, Callable
-from loguru import logger
+from dataclasses import dataclass
 from enum import Enum
+import time
 
-from ..utils.config import Config
+from .conversation_manager import ConversationManager
+from .config_manager import ConfigManager
+from ..modules.live2d.live2d_manager import Live2DManager
 from ..modules.asr.whisper_asr import WhisperASR
 from ..modules.tts.tts_engine import TTSEngine
 from ..modules.llm.llm_client import LLMClient
-from ..modules.live2d.live2d_manager import Live2DManager
 from ..modules.audio.audio_manager import AudioManager
-from ..utils.event_bus import EventBus, Event
+from ..rendering.spout_streamer import SpoutStreamer
+from ..ui.control_panel import ControlPanel
 
 
 class EngineState(Enum):
-    """引擎状态"""
+    """引擎状态枚举"""
     STOPPED = "stopped"
-    STARTING = "starting"
-    LISTENING = "listening" 
-    PROCESSING = "processing"
-    SPEAKING = "speaking"
+    INITIALIZING = "initializing"
+    RUNNING = "running"
     ERROR = "error"
 
 
-class AvatarEngine:
-    """虚拟角色引擎主类"""
+@dataclass
+class EngineConfig:
+    """引擎配置"""
+    # Live2D 配置
+    live2d_model_path: str = "src/modules/live2d/Models/Hiyori"
+    live2d_model_name: str = "Hiyori"
     
-    def __init__(self, config: Config):
-        self.config = config
+    # 音频配置
+    sample_rate: int = 16000
+    chunk_size: int = 1024
+    audio_device_index: Optional[int] = None
+    
+    # ASR 配置
+    whisper_model: str = "base"
+    vad_threshold: float = 0.5
+    
+    # TTS 配置
+    tts_voice: str = "default"
+    tts_speed: float = 1.0
+    
+    # LLM 配置
+    llm_model: str = "gpt-3.5-turbo"
+    llm_api_key: str = ""
+    llm_endpoint: str = "https://api.openai.com/v1"
+    
+    # 推流配置
+    enable_obs_streaming: bool = True
+    obs_host: str = "localhost"
+    obs_port: int = 4444
+    obs_password: str = ""
+    
+    # 渲染配置
+    render_width: int = 1080
+    render_height: int = 1920
+    target_fps: int = 60
+
+
+class AvatarEngine:
+    """
+    虚拟数字人引擎主类
+    
+    负责协调和管理所有子系统，包括：
+    - Live2D 渲染
+    - 语音识别和合成
+    - 大语言模型对话
+    - 推流输出
+    - 用户界面
+    """
+    
+    def __init__(self, config: Optional[EngineConfig] = None):
+        self.config = config or EngineConfig()
         self.state = EngineState.STOPPED
-        self.event_bus = EventBus()
+        self.logger = logging.getLogger(__name__)
         
-        # 核心模块
+        # 核心组件
+        self.config_manager: Optional[ConfigManager] = None
+        self.conversation_manager: Optional[ConversationManager] = None
+        self.live2d_manager: Optional[Live2DManager] = None
         self.asr: Optional[WhisperASR] = None
         self.tts: Optional[TTSEngine] = None
         self.llm: Optional[LLMClient] = None
-        self.live2d: Optional[Live2DManager] = None
-        self.audio: Optional[AudioManager] = None
+        self.audio_manager: Optional[AudioManager] = None
+        self.spout_streamer: Optional[SpoutStreamer] = None
+        self.control_panel: Optional[ControlPanel] = None
         
-        # 运行控制
+        # 内部状态
+        self._render_thread: Optional[threading.Thread] = None
+        self._audio_thread: Optional[threading.Thread] = None
+        self._conversation_task: Optional[asyncio.Task] = None
         self._running = False
-        self._main_loop_task: Optional[asyncio.Task] = None
-        self._conversation_history = []
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
         
-        # 性能监控
-        self.metrics = {
-            "asr_latency": 0.0,
-            "llm_latency": 0.0,
-            "tts_latency": 0.0,
-            "total_latency": 0.0,
-            "interactions_count": 0
-        }
-        
-        # 回调函数
+        # 事件回调
         self.on_state_changed: Optional[Callable[[EngineState], None]] = None
-        self.on_text_recognized: Optional[Callable[[str], None]] = None
+        self.on_error: Optional[Callable[[Exception], None]] = None
+        self.on_speech_detected: Optional[Callable[[str], None]] = None
         self.on_response_generated: Optional[Callable[[str], None]] = None
-        self.on_audio_playing: Optional[Callable[[bytes], None]] = None
-        
-        logger.info("虚拟角色引擎已初始化")
-
+    
     async def initialize(self) -> bool:
-        """初始化所有模块"""
+        """
+        初始化引擎和所有子系统
+        
+        Returns:
+            bool: 初始化是否成功
+        """
         try:
-            self._set_state(EngineState.STARTING)
+            self._set_state(EngineState.INITIALIZING)
+            self.logger.info("正在初始化虚拟数字人引擎...")
             
-            # 初始化事件监听
-            self._setup_event_handlers()
+            # 初始化配置管理器
+            self.config_manager = ConfigManager()
+            await self.config_manager.load_config()
+            
+            # 初始化 Live2D 管理器
+            self.logger.info("初始化 Live2D 管理器...")
+            self.live2d_manager = Live2DManager(
+                model_path=self.config.live2d_model_path,
+                model_name=self.config.live2d_model_name,
+                width=self.config.render_width,
+                height=self.config.render_height
+            )
+            await self.live2d_manager.initialize()
             
             # 初始化音频管理器
-            self.audio = AudioManager(self.config.audio)
-            await self.audio.initialize()
-            logger.info("音频管理器初始化完成")
+            self.logger.info("初始化音频管理器...")
+            self.audio_manager = AudioManager(
+                sample_rate=self.config.sample_rate,
+                chunk_size=self.config.chunk_size,
+                device_index=self.config.audio_device_index
+            )
+            await self.audio_manager.initialize()
             
-            # 初始化ASR
-            self.asr = WhisperASR(self.config.asr)
+            # 初始化 ASR
+            self.logger.info("初始化语音识别...")
+            self.asr = WhisperASR(
+                model_name=self.config.whisper_model,
+                vad_threshold=self.config.vad_threshold
+            )
             await self.asr.initialize()
-            logger.info("语音识别模块初始化完成")
             
-            # 初始化TTS
-            self.tts = TTSEngine(self.config.tts)
+            # 初始化 TTS
+            self.logger.info("初始化语音合成...")
+            self.tts = TTSEngine(
+                voice=self.config.tts_voice,
+                speed=self.config.tts_speed
+            )
             await self.tts.initialize()
-            logger.info("文本转语音模块初始化完成")
             
-            # 初始化LLM
-            self.llm = LLMClient(self.config.llm)
+            # 初始化 LLM
+            self.logger.info("初始化大语言模型...")
+            self.llm = LLMClient(
+                model=self.config.llm_model,
+                api_key=self.config.llm_api_key,
+                endpoint=self.config.llm_endpoint
+            )
             await self.llm.initialize()
-            logger.info("大语言模型模块初始化完成")
             
-            # 初始化Live2D (可选)
-            if self.config.live2d.enabled:
-                self.live2d = Live2DManager(self.config.live2d)
-                await self.live2d.initialize()
-                logger.info("Live2D模块初始化完成")
+            # 初始化对话管理器
+            self.logger.info("初始化对话管理器...")
+            self.conversation_manager = ConversationManager(
+                asr=self.asr,
+                tts=self.tts,
+                llm=self.llm,
+                live2d_manager=self.live2d_manager
+            )
             
-            self._set_state(EngineState.LISTENING)
-            logger.info("引擎初始化完成，所有模块已就绪")
+            # 初始化推流器
+            if self.config.enable_obs_streaming:
+                self.logger.info("初始化 OBS 推流...")
+                self.spout_streamer = SpoutStreamer(
+                    host=self.config.obs_host,
+                    port=self.config.obs_port,
+                    password=self.config.obs_password
+                )
+                await self.spout_streamer.initialize()
+            
+            # 初始化控制面板
+            self.logger.info("初始化控制面板...")
+            self.control_panel = ControlPanel(engine=self)
+            
+            self.logger.info("引擎初始化完成")
             return True
             
         except Exception as e:
-            logger.error(f"引擎初始化失败: {e}")
+            self.logger.error(f"引擎初始化失败: {e}")
             self._set_state(EngineState.ERROR)
+            if self.on_error:
+                self.on_error(e)
             return False
-
-    async def start(self):
-        """启动引擎"""
-        if self._running:
-            logger.warning("引擎已在运行中")
-            return
+    
+    async def start(self) -> bool:
+        """
+        启动引擎
+        
+        Returns:
+            bool: 启动是否成功
+        """
+        try:
+            if self.state != EngineState.INITIALIZING:
+                self.logger.error("引擎必须先初始化才能启动")
+                return False
             
-        if self.state == EngineState.STOPPED:
-            if not await self.initialize():
-                return
-                
-        self._running = True
-        self._main_loop_task = asyncio.create_task(self._main_loop())
-        logger.info("引擎已启动")
-
+            self.logger.info("启动虚拟数字人引擎...")
+            self._running = True
+            self._loop = asyncio.get_event_loop()
+            
+            # 启动渲染线程
+            self._render_thread = threading.Thread(target=self._render_loop, daemon=True)
+            self._render_thread.start()
+            
+            # 启动音频处理线程
+            self._audio_thread = threading.Thread(target=self._audio_loop, daemon=True)
+            self._audio_thread.start()
+            
+            # 启动对话管理器
+            self._conversation_task = asyncio.create_task(
+                self.conversation_manager.start_conversation_loop()
+            )
+            
+            # 启动推流
+            if self.spout_streamer:
+                await self.spout_streamer.start_streaming()
+            
+            # 启动控制面板
+            if self.control_panel:
+                await self.control_panel.start()
+            
+            self._set_state(EngineState.RUNNING)
+            self.logger.info("引擎启动成功")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"引擎启动失败: {e}")
+            self._set_state(EngineState.ERROR)
+            if self.on_error:
+                self.on_error(e)
+            return False
+    
     async def stop(self):
         """停止引擎"""
-        self._running = False
+        try:
+            self.logger.info("正在停止虚拟数字人引擎...")
+            self._running = False
+            
+            # 停止对话管理器
+            if self._conversation_task:
+                self._conversation_task.cancel()
+                try:
+                    await self._conversation_task
+                except asyncio.CancelledError:
+                    pass
+            
+            # 停止推流
+            if self.spout_streamer:
+                await self.spout_streamer.stop_streaming()
+            
+            # 停止控制面板
+            if self.control_panel:
+                await self.control_panel.stop()
+            
+            # 等待线程结束
+            if self._render_thread and self._render_thread.is_alive():
+                self._render_thread.join(timeout=5.0)
+            
+            if self._audio_thread and self._audio_thread.is_alive():
+                self._audio_thread.join(timeout=5.0)
+            
+            # 清理资源
+            await self._cleanup()
+            
+            self._set_state(EngineState.STOPPED)
+            self.logger.info("引擎已停止")
+            
+        except Exception as e:
+            self.logger.error(f"停止引擎时出错: {e}")
+            if self.on_error:
+                self.on_error(e)
+    
+    def _render_loop(self):
+        """渲染循环（在独立线程中运行）"""
+        target_frame_time = 1.0 / self.config.target_fps
         
-        if self._main_loop_task:
-            self._main_loop_task.cancel()
+        while self._running:
+            start_time = time.time()
+            
             try:
-                await self._main_loop_task
-            except asyncio.CancelledError:
-                pass
-                
-        # 清理资源
-        await self._cleanup()
-        self._set_state(EngineState.STOPPED)
-        logger.info("引擎已停止")
-
-    async def _main_loop(self):
-        """主事件循环"""
-        logger.info("主事件循环开始")
-        
-        try:
-            while self._running:
-                if self.state == EngineState.LISTENING:
-                    await self._listen_for_speech()
-                elif self.state == EngineState.PROCESSING:
-                    # 处理状态通常由事件驱动，这里只需等待
-                    await asyncio.sleep(0.1)
-                elif self.state == EngineState.SPEAKING:
-                    # 同样由事件驱动
-                    await asyncio.sleep(0.1)
-                else:
-                    await asyncio.sleep(0.1)
+                # 更新 Live2D 模型
+                if self.live2d_manager:
+                    delta_time = target_frame_time
+                    self.live2d_manager.update(delta_time)
+                    frame = self.live2d_manager.render()
                     
-        except asyncio.CancelledError:
-            logger.info("主循环被取消")
-        except Exception as e:
-            logger.error(f"主循环出错: {e}")
-            self._set_state(EngineState.ERROR)
-
-    async def _listen_for_speech(self):
-        """监听语音输入"""
-        try:
-            # 从麦克风获取音频数据
-            audio_data = await self.audio.capture_audio()
-            
-            if audio_data and len(audio_data) > 0:
-                # 检测是否有语音活动
-                if await self.asr.detect_speech(audio_data):
-                    self._set_state(EngineState.PROCESSING)
-                    
-                    # 异步处理语音识别
-                    asyncio.create_task(self._process_speech(audio_data))
-                    
-        except Exception as e:
-            logger.error(f"语音监听出错: {e}")
-
-    async def _process_speech(self, audio_data: bytes):
-        """处理语音输入的完整流程"""
-        start_time = time.time()
-        
-        try:
-            # 1. 语音识别
-            asr_start = time.time()
-            recognized_text = await self.asr.transcribe(audio_data)
-            asr_time = time.time() - asr_start
-            
-            if not recognized_text or recognized_text.strip() == "":
-                self._set_state(EngineState.LISTENING)
-                return
+                    # 发送帧到推流器
+                    if self.spout_streamer and frame is not None:
+                        self.spout_streamer.send_frame(frame)
                 
-            logger.info(f"识别到语音: {recognized_text}")
-            self._trigger_callback(self.on_text_recognized, recognized_text)
-            
-            # 2. 大语言模型生成回应
-            llm_start = time.time()
-            response_text = await self._generate_response(recognized_text)
-            llm_time = time.time() - llm_start
-            
-            if not response_text:
-                self._set_state(EngineState.LISTENING)
-                return
-                
-            logger.info(f"生成回应: {response_text}")
-            self._trigger_callback(self.on_response_generated, response_text)
-            
-            # 3. 处理表情命令
-            emotion = self._extract_emotion(response_text)
-            clean_text = self._clean_response_text(response_text)
-            
-            if emotion and self.live2d:
-                await self.live2d.set_emotion(emotion)
-            
-            # 4. 文本转语音
-            self._set_state(EngineState.SPEAKING)
-            tts_start = time.time()
-            audio_data = await self.tts.synthesize(clean_text)
-            tts_time = time.time() - tts_start
-            
-            # 5. 播放音频和同步动画
-            if audio_data:
-                # 触发播放回调
-                self._trigger_callback(self.on_audio_playing, audio_data)
-                
-                # 播放音频
-                await self.audio.play_audio(audio_data)
-                
-                # 同步口型动画
-                if self.live2d:
-                    phonemes = await self.tts.get_phonemes(clean_text)
-                    await self.live2d.sync_lipsync(phonemes, len(audio_data))
-            
-            # 更新性能指标
-            total_time = time.time() - start_time
-            self._update_metrics(asr_time, llm_time, tts_time, total_time)
-            
-            # 返回监听状态
-            self._set_state(EngineState.LISTENING)
-            
-        except Exception as e:
-            logger.error(f"语音处理流程出错: {e}")
-            self._set_state(EngineState.ERROR)
-
-    async def _generate_response(self, user_input: str) -> str:
-        """生成LLM回应"""
-        try:
-            # 构建对话历史
-            messages = self._build_conversation_context(user_input)
-            
-            # 调用LLM
-            response = await self.llm.chat_completion(messages)
-            
-            # 更新对话历史
-            self._conversation_history.append({
-                "role": "user",
-                "content": user_input,
-                "timestamp": time.time()
-            })
-            self._conversation_history.append({
-                "role": "assistant", 
-                "content": response,
-                "timestamp": time.time()
-            })
-            
-            # 限制历史长度
-            max_turns = self.config.conversation.max_history_turns
-            if len(self._conversation_history) > max_turns * 2:
-                self._conversation_history = self._conversation_history[-(max_turns * 2):]
-            
-            return response
-            
-        except Exception as e:
-            logger.error(f"LLM生成回应失败: {e}")
-            return ""
-
-    def _build_conversation_context(self, user_input: str) -> list:
-        """构建对话上下文"""
-        messages = []
-        
-        # 系统提示
-        if self.config.conversation.system_prompt_file:
-            try:
-                with open(self.config.conversation.system_prompt_file, 'r', encoding='utf-8') as f:
-                    system_prompt = f.read()
-                messages.append({"role": "system", "content": system_prompt})
             except Exception as e:
-                logger.warning(f"无法读取系统提示文件: {e}")
-        
-        # 添加对话历史
-        messages.extend(self._conversation_history)
-        
-        # 添加当前用户输入
-        messages.append({"role": "user", "content": user_input})
-        
-        return messages
-
-    def _extract_emotion(self, text: str) -> Optional[str]:
-        """从回应文本中提取表情标签"""
-        import re
-        emotion_pattern = r'\[EMOTION:(\w+)\]'
-        match = re.search(emotion_pattern, text)
-        return match.group(1) if match else None
-
-    def _clean_response_text(self, text: str) -> str:
-        """清理回应文本，移除表情标签"""
-        import re
-        return re.sub(r'\[EMOTION:\w+\]', '', text).strip()
-
-    def _setup_event_handlers(self):
-        """设置事件处理器"""
-        self.event_bus.subscribe("audio_chunk_received", self._on_audio_chunk)
-        self.event_bus.subscribe("speech_detected", self._on_speech_detected)
-        self.event_bus.subscribe("speech_ended", self._on_speech_ended)
-
-    def _set_state(self, new_state: EngineState):
-        """更新引擎状态"""
-        if self.state != new_state:
-            old_state = self.state
-            self.state = new_state
-            logger.info(f"引擎状态变更: {old_state.value} -> {new_state.value}")
-            self._trigger_callback(self.on_state_changed, new_state)
-
-    def _trigger_callback(self, callback: Optional[Callable], *args):
-        """安全地触发回调函数"""
-        if callback:
+                self.logger.error(f"渲染循环错误: {e}")
+            
+            # 控制帧率
+            elapsed = time.time() - start_time
+            if elapsed < target_frame_time:
+                time.sleep(target_frame_time - elapsed)
+    
+    def _audio_loop(self):
+        """音频处理循环（在独立线程中运行）"""
+        while self._running:
             try:
-                if asyncio.iscoroutinefunction(callback):
-                    asyncio.create_task(callback(*args))
-                else:
-                    callback(*args)
+                if self.audio_manager and self.conversation_manager:
+                    # 获取音频数据
+                    audio_data = self.audio_manager.get_audio_chunk()
+                    if audio_data is not None:
+                        # 异步处理音频
+                        if self._loop:
+                            asyncio.run_coroutine_threadsafe(
+                                self.conversation_manager.process_audio(audio_data),
+                                self._loop
+                            )
+                
             except Exception as e:
-                logger.error(f"回调函数执行失败: {e}")
-
-    def _update_metrics(self, asr_time: float, llm_time: float, tts_time: float, total_time: float):
-        """更新性能指标"""
-        self.metrics["asr_latency"] = asr_time
-        self.metrics["llm_latency"] = llm_time  
-        self.metrics["tts_latency"] = tts_time
-        self.metrics["total_latency"] = total_time
-        self.metrics["interactions_count"] += 1
-
-    async def _on_audio_chunk(self, event: Event):
-        """处理音频块事件"""
-        pass
-
-    async def _on_speech_detected(self, event: Event):
-        """处理检测到语音事件"""
-        logger.debug("检测到语音活动")
-
-    async def _on_speech_ended(self, event: Event):
-        """处理语音结束事件"""
-        logger.debug("语音活动结束")
-
+                self.logger.error(f"音频处理循环错误: {e}")
+            
+            time.sleep(0.01)  # 10ms 间隔
+    
     async def _cleanup(self):
         """清理资源"""
         try:
-            if self.audio:
-                await self.audio.cleanup()
+            if self.live2d_manager:
+                await self.live2d_manager.cleanup()
+            
+            if self.audio_manager:
+                await self.audio_manager.cleanup()
+            
             if self.asr:
                 await self.asr.cleanup()
+            
             if self.tts:
                 await self.tts.cleanup()
+            
             if self.llm:
                 await self.llm.cleanup()
-            if self.live2d:
-                await self.live2d.cleanup()
-        except Exception as e:
-            logger.error(f"资源清理失败: {e}")
-
-    # 公共接口方法
-    def get_state(self) -> EngineState:
-        """获取当前状态"""
-        return self.state
-
-    def get_metrics(self) -> Dict[str, Any]:
-        """获取性能指标"""
-        return self.metrics.copy()
-
-    def get_conversation_history(self) -> list:
-        """获取对话历史"""
-        return self._conversation_history.copy()
-
-    async def send_text_message(self, text: str) -> str:
-        """发送文本消息 (不通过语音)"""
-        if self.state not in [EngineState.LISTENING, EngineState.SPEAKING]:
-            raise RuntimeError("引擎当前状态不允许处理消息")
             
-        response = await self._generate_response(text)
-        return response
-
-    async def set_system_prompt(self, prompt: str):
-        """动态设置系统提示"""
-        # 可以实现动态修改角色设定的功能
-        pass 
+            if self.spout_streamer:
+                await self.spout_streamer.cleanup()
+                
+        except Exception as e:
+            self.logger.error(f"清理资源时出错: {e}")
+    
+    def _set_state(self, new_state: EngineState):
+        """设置引擎状态"""
+        if self.state != new_state:
+            self.state = new_state
+            self.logger.info(f"引擎状态变更: {new_state.value}")
+            if self.on_state_changed:
+                self.on_state_changed(new_state)
+    
+    # 公共接口方法
+    async def send_message(self, message: str) -> str:
+        """
+        发送消息给虚拟人
+        
+        Args:
+            message: 要发送的消息
+            
+        Returns:
+            str: 虚拟人的回复
+        """
+        if self.conversation_manager:
+            return await self.conversation_manager.process_text_input(message)
+        return ""
+    
+    def set_emotion(self, emotion: str):
+        """
+        设置虚拟人情感
+        
+        Args:
+            emotion: 情感标识符（如 "😊", "😢" 等）
+        """
+        if self.live2d_manager:
+            self.live2d_manager.set_emotion(emotion)
+    
+    def get_status(self) -> Dict[str, Any]:
+        """
+        获取引擎状态信息
+        
+        Returns:
+            Dict[str, Any]: 包含各子系统状态的字典
+        """
+        return {
+            "engine_state": self.state.value,
+            "live2d_initialized": self.live2d_manager is not None,
+            "audio_initialized": self.audio_manager is not None,
+            "asr_initialized": self.asr is not None,
+            "tts_initialized": self.tts is not None,
+            "llm_initialized": self.llm is not None,
+            "streaming_enabled": self.spout_streamer is not None,
+            "running": self._running
+        }
+    
+    async def update_config(self, new_config: Dict[str, Any]):
+        """
+        更新配置
+        
+        Args:
+            new_config: 新的配置参数
+        """
+        if self.config_manager:
+            await self.config_manager.update_config(new_config)
+            # 根据需要重新初始化相关组件
+            # TODO: 实现热更新逻辑 

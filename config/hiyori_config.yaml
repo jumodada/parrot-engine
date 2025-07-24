@@ -1,0 +1,295 @@
+# Hiyori Live2D 模型配置文件
+# 用于优化 Hiyori 模型的参数和行为
+
+# 模型基本信息
+model:
+  name: "Hiyori"
+  path: "src/modules/live2d/Models/Hiyori"
+  version: 3
+  
+  # 渲染设置
+  render:
+    width: 1080
+    height: 1920
+    background_color: [0, 0, 0, 0]  # 透明背景
+    scale: 1.0
+    position: [0.0, 0.0]  # 中心位置
+    
+  # 物理设置
+  physics:
+    enabled: true
+    gravity: [0, -1]
+    wind: [0, 0]
+    
+# 参数映射 - 映射情感标签到 Live2D 参数
+parameters:
+  # 嘴部参数 (VBridger 兼容)
+  mouth:
+    ParamMouthOpenY: 
+      range: [0.0, 1.0]
+      default: 0.0
+    ParamJawOpen:
+      range: [0.0, 1.0] 
+      default: 0.0
+    ParamMouthForm:
+      range: [-1.0, 1.0]
+      default: 0.0
+    ParamMouthSize:
+      range: [-1.0, 1.0]
+      default: 0.0
+      
+  # 眼部参数
+  eyes:
+    ParamEyeLOpen:
+      range: [0.0, 1.0]
+      default: 1.0
+    ParamEyeROpen:
+      range: [0.0, 1.0] 
+      default: 1.0
+    ParamEyeBallX:
+      range: [-1.0, 1.0]
+      default: 0.0
+    ParamEyeBallY:
+      range: [-1.0, 1.0]
+      default: 0.0
+      
+  # 头部和身体参数
+  head:
+    ParamAngleX:
+      range: [-30.0, 30.0]
+      default: 0.0
+    ParamAngleY:
+      range: [-30.0, 30.0]
+      default: 0.0
+    ParamAngleZ:
+      range: [-30.0, 30.0]
+      default: 0.0
+    ParamBodyAngleX:
+      range: [-10.0, 10.0]
+      default: 0.0
+      
+  # 眉毛参数
+  eyebrows:
+    ParamBrowLY:
+      range: [-1.0, 1.0]
+      default: 0.0
+    ParamBrowRY:
+      range: [-1.0, 1.0]
+      default: 0.0
+
+# 表情映射 - 情感标签到参数值的映射
+expressions:
+  # 基础表情
+  neutral:
+    name: "中性"
+    parameters:
+      ParamMouthForm: 0.0
+      ParamBrowLY: 0.0
+      ParamBrowRY: 0.0
+      
+  happy:
+    name: "开心"
+    parameters:
+      ParamMouthForm: 0.8
+      ParamBrowLY: 0.2
+      ParamBrowRY: 0.2
+      ParamEyeLOpen: 0.9
+      ParamEyeROpen: 0.9
+      
+  excited:
+    name: "兴奋"
+    parameters:
+      ParamMouthForm: 1.0
+      ParamMouthOpenY: 0.3
+      ParamBrowLY: 0.5
+      ParamBrowRY: 0.5
+      ParamEyeLOpen: 1.0
+      ParamEyeROpen: 1.0
+      
+  cool:
+    name: "冷静"
+    parameters:
+      ParamMouthForm: -0.2
+      ParamBrowLY: -0.3
+      ParamBrowRY: -0.3
+      ParamEyeLOpen: 0.8
+      ParamEyeROpen: 0.8
+      
+  smug:
+    name: "得意"
+    parameters:
+      ParamMouthForm: 0.5
+      ParamBrowLY: 0.3
+      ParamBrowRY: -0.2
+      ParamEyeLOpen: 0.7
+      ParamEyeROpen: 0.9
+      
+  determined:
+    name: "坚定"
+    parameters:
+      ParamMouthForm: -0.1
+      ParamBrowLY: -0.5
+      ParamBrowRY: -0.5
+      ParamEyeLOpen: 1.0
+      ParamEyeROpen: 1.0
+      
+  embarrassed:
+    name: "尴尬"
+    parameters:
+      ParamMouthForm: -0.3
+      ParamBrowLY: 0.6
+      ParamBrowRY: 0.6
+      ParamEyeLOpen: 0.6
+      ParamEyeROpen: 0.6
+      
+  shocked:
+    name: "震惊"
+    parameters:
+      ParamMouthForm: 0.0
+      ParamMouthOpenY: 0.8
+      ParamBrowLY: 0.8
+      ParamBrowRY: 0.8
+      ParamEyeLOpen: 1.0
+      ParamEyeROpen: 1.0
+      
+  thinking:
+    name: "思考"
+    parameters:
+      ParamMouthForm: -0.2
+      ParamBrowLY: -0.2
+      ParamBrowRY: 0.4
+      ParamEyeLOpen: 0.8
+      ParamEyeROpen: 0.8
+      ParamAngleX: -5.0
+      
+  suspicious:
+    name: "怀疑"
+    parameters:
+      ParamMouthForm: -0.4
+      ParamBrowLY: -0.6
+      ParamBrowRY: -0.2
+      ParamEyeLOpen: 0.7
+      ParamEyeROpen: 0.9
+      ParamAngleY: 10.0
+      
+  frustrated:
+    name: "沮丧"
+    parameters:
+      ParamMouthForm: -0.6
+      ParamBrowLY: -0.8
+      ParamBrowRY: -0.8
+      ParamEyeLOpen: 0.5
+      ParamEyeROpen: 0.5
+      
+  sad:
+    name: "悲伤"
+    parameters:
+      ParamMouthForm: -0.5
+      ParamBrowLY: 0.8
+      ParamBrowRY: 0.8
+      ParamEyeLOpen: 0.4
+      ParamEyeROpen: 0.4
+      
+  awkward:
+    name: "别扭"
+    parameters:
+      ParamMouthForm: -0.3
+      ParamBrowLY: 0.3
+      ParamBrowRY: -0.3
+      ParamEyeLOpen: 0.7
+      ParamEyeROpen: 0.7
+      ParamAngleZ: 5.0
+
+# 动作映射 - 情感/情况到动作的映射
+motions:
+  # 空闲动作组
+  idle:
+    group: "Idle"
+    motions:
+      - "Hiyori_m01.motion3.json"  # 基础空闲
+      - "Hiyori_m02.motion3.json"  # 轻微摆动
+      - "Hiyori_m03.motion3.json"  # 眨眼
+    weight: 1.0
+    fade_in: 0.5
+    fade_out: 0.5
+    
+  # 交互动作
+  tap_body:
+    group: "TapBody" 
+    motions:
+      - "Hiyori_m04.motion3.json"
+    weight: 1.0
+    fade_in: 0.3
+    fade_out: 0.3
+    
+  # 情感动作映射
+  happy_motion:
+    emotion_triggers: ["happy", "excited", "laughing"]
+    group: "Idle"
+    preferred_motions:
+      - "Hiyori_m02.motion3.json"  # 更活泼的动作
+      - "Hiyori_m06.motion3.json"
+    weight: 1.5
+    
+  thinking_motion:
+    emotion_triggers: ["thinking", "suspicious"]
+    group: "Idle"
+    preferred_motions:
+      - "Hiyori_m08.motion3.json"
+      - "Hiyori_m09.motion3.json"
+    weight: 1.2
+    
+  calm_motion:
+    emotion_triggers: ["cool", "determined", "neutral"]
+    group: "Idle"
+    preferred_motions:
+      - "Hiyori_m01.motion3.json"
+      - "Hiyori_m07.motion3.json"
+    weight: 1.0
+
+# 眼部闪烁设置
+blinking:
+  enabled: true
+  interval_min: 1.5  # 最短闪烁间隔（秒）
+  interval_max: 6.0  # 最长闪烁间隔（秒）
+  close_duration: 0.06  # 闭眼时长
+  open_duration: 0.10   # 睁眼时长
+  
+# 唇形同步设置
+lipsync:
+  enabled: true
+  # VBridger 参数映射
+  vbridger_mapping:
+    mouth_open_y: "ParamMouthOpenY"
+    jaw_open: "ParamJawOpen"
+    mouth_form: "ParamMouthForm"
+    mouth_size: "ParamMouthSize"
+    
+  # 唇形同步强度
+  intensity: 0.8
+  smoothing: 0.3  # 平滑度
+  
+# 呼吸效果
+breathing:
+  enabled: true
+  parameters:
+    - name: "ParamBodyAngleX"
+      amplitude: 0.5
+      cycle: 3.0
+    - name: "ParamAngleZ"
+      amplitude: 0.3
+      cycle: 4.0
+      
+# 性能设置
+performance:
+  max_fps: 60
+  update_interval: 0.016  # 约60FPS
+  parameter_smoothing: true
+  motion_blending: true
+  
+# 调试设置
+debug:
+  show_parameters: false
+  log_motion_changes: true
+  log_expression_changes: true
+  performance_monitoring: true 
