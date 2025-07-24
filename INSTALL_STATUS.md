@@ -84,18 +84,14 @@ python -c "import whisper; print('Whisper可用')"
 ## 📝 安装命令总结
 
 ```bash
-# 1. 安装系统依赖
+# 1. 安装系统依赖 (macOS)
 brew install portaudio
 
-# 2. 安装核心Python包
-pip install -r requirements-core.txt
-
-# 3. 安装补充功能包  
-pip install -r requirements-additional.txt
-
-# 4. 根据需要安装可选包
-# pip install -r requirements-optional.txt
+# 2. 一次性安装所有Python依赖
+pip install -r requirements.txt
 ```
+
+> **简化说明**: 现在只需要使用一个 `requirements.txt` 文件，包含了所有必要的依赖包。
 
 ## 🧪 模块导入测试结果
 

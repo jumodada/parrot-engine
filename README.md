@@ -79,14 +79,11 @@ source venv/bin/activate  # Linux/Mac
 # 首先安装系统依赖 (macOS)
 brew install portaudio
 
-# 安装核心Python依赖
-pip install -r requirements-core.txt
-
-# 安装补充功能包
-pip install -r requirements-additional.txt
+# 一次性安装所有Python依赖
+pip install -r requirements.txt
 ```
 
-> **注意**: 我们已经修复了依赖冲突问题。如果遇到问题，请查看 `INSTALL_STATUS.md` 了解详细信息。
+> **注意**: 已修复所有依赖冲突问题。如果遇到问题，请查看 `INSTALL_STATUS.md` 了解详细信息。
 
 4. **配置系统**:
 ```bash
