@@ -51,16 +51,24 @@ class BlinkingConfig:
 class LipsyncConfig:
     """唇形同步配置"""
     enabled: bool = True
-    vbridger_mapping: Dict[str, str]
+    vbridger_mapping: Dict[str, str] = None
     intensity: float = 0.8
     smoothing: float = 0.3
+    
+    def __post_init__(self):
+        if self.vbridger_mapping is None:
+            self.vbridger_mapping = {}
 
 
 @dataclass
 class BreathingConfig:
     """呼吸效果配置"""
     enabled: bool = True
-    parameters: List[Dict[str, Any]]
+    parameters: List[Dict[str, Any]] = None
+    
+    def __post_init__(self):
+        if self.parameters is None:
+            self.parameters = []
 
 
 @dataclass

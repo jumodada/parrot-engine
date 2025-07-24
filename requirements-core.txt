@@ -1,0 +1,42 @@
+# 核心依赖 - 无版本冲突
+fastapi>=0.100.0
+uvicorn>=0.20.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# 音频处理 (基础)
+pyaudio>=0.2.11
+soundfile>=0.12.0
+numpy>=1.21.0,<1.25.0
+scipy>=1.10.0
+
+# 语音识别 (轻量版)
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# 大语言模型
+openai>=1.0.0
+anthropic>=0.8.0
+httpx>=0.25.0
+
+# 图形和界面
+opencv-python>=4.8.0
+Pillow>=10.0.0
+pygame>=2.5.0
+
+# 推流和输出
+mss>=9.0.0
+obs-websocket-py>=1.0
+
+# UI界面  
+customtkinter>=5.2.0
+
+# 配置和日志
+PyYAML>=6.0.0
+python-dotenv>=1.0.0
+loguru>=0.7.0
+
+# 异步和网络
+websockets>=12.0
+aiofiles>=23.0.0
+requests>=2.31.0 

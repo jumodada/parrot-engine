@@ -1,0 +1,13 @@
+# 补充功能包
+# 语音识别
+openai-whisper>=20231117
+
+# 音频处理增强
+librosa>=0.10.0
+
+# 异步和并发
+asyncio-mqtt>=0.13.0
+
+# 工具库
+dataclasses-json>=0.6.0
+marshmallow>=3.20.0 

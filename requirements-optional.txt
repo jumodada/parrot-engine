@@ -1,0 +1,14 @@
+# 可选依赖包 - 在某些系统上可能不可用
+# 请根据您的系统和需求选择性安装
+
+# 虚拟摄像头支持 (Windows/Linux)
+# pyvirtualcam>=0.11.0
+
+# macOS 替代方案:
+# 1. 使用 OBS Virtual Camera
+# 2. 使用系统内置的屏幕共享功能
+# 3. 手动安装: brew install pyvirtualcam (如果可用)
+
+# 其他可选包
+# screenrecorder  # 屏幕录制
+# v4l2loopback   # Linux虚拟摄像头 
