@@ -165,11 +165,28 @@ python test_hiyori_complete.py
    - 确保网络连接正常
    - 验证 API 额度
 
-3. **Live2D 段错误**
+3. **tkinter 不可用 (GUI 问题)**
+   ```bash
+   # macOS 解决方案
+   brew install python-tk
+   # 或重新安装 Python 并确保包含 tkinter 支持
+   
+   # 临时解决方案：使用命令行模式
+   python run_example.py --console
+   ```
+   
+   **原因**: 通过 pyenv 安装的 Python 可能缺少 tkinter 支持
+   
+   **检查方法**:
+   ```bash
+   python -c "import tkinter; print('tkinter 可用')"
+   ```
+
+4. **Live2D 段错误**
    - 确保在支持 OpenGL 的环境中运行
    - 检查 live2d-py 版本兼容性
 
-4. **音频功能异常**
+5. **音频功能异常**
    ```bash
    # macOS 安装 portaudio
    brew install portaudio

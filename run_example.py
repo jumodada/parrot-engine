@@ -9,19 +9,34 @@ import os
 import sys
 import random
 from typing import List, Dict
-import tkinter as tk
-from tkinter import scrolledtext
 import threading
 
+# 检查tkinter可用性
+TKINTER_AVAILABLE = False
+try:
+    import tkinter as tk
+    from tkinter import scrolledtext
+    TKINTER_AVAILABLE = True
+except ImportError:
+    print("⚠️  tkinter 不可用，将使用命令行模式")
+    tk = None
+    scrolledtext = None
+
+# 检查customtkinter可用性
 try:
     import customtkinter as ctk
 except ImportError:
-    print("未安装customtkinter，使用标准tkinter")
+    if TKINTER_AVAILABLE:
+        print("未安装customtkinter，使用标准tkinter")
     ctk = None
 
 
 def simple_text_chat():
     """简单的文本聊天演示"""
+    
+    if not TKINTER_AVAILABLE:
+        # 使用命令行模式
+        return simple_console_chat()
     
     # 预设回复
     responses = [
@@ -115,6 +130,58 @@ def simple_text_chat():
     root.mainloop()
 
 
+def simple_console_chat():
+    """命令行聊天演示"""
+    
+    # 预设回复
+    responses = [
+        "很高兴能和你聊天！",
+        "我是Python Persona Engine的示例角色。我还没有连接到真正的AI引擎。",
+        "如果你想使用完整功能，请配置config.yaml中的API密钥。",
+        "我可以模拟对话、语音识别和文本转语音等功能。",
+        "这只是个简单演示，完整引擎支持Live2D角色动画！",
+        "有关如何设置和使用的详细信息，请查看README.md。",
+        "你可以使用OpenAI、Anthropic或本地的LLM模型作为我的大脑。"
+    ]
+    
+    print("\n" + "="*60)
+    print("🎭 Python Persona Engine 命令行聊天演示")
+    print("="*60)
+    print("助手: 你好！我是Python Persona Engine的示例角色。")
+    print("助手: 请输入消息与我聊天，输入 'quit' 或 'exit' 退出。")
+    print("="*60)
+    
+    while True:
+        try:
+            # 获取用户输入
+            user_input = input("\n用户: ").strip()
+            
+            # 检查退出命令
+            if user_input.lower() in ['quit', 'exit', '退出', 'q']:
+                print("\n助手: 再见！感谢使用 Python Persona Engine！")
+                break
+            
+            if not user_input:
+                continue
+            
+            # 模拟思考延迟
+            print("助手: [思考中...]", end="", flush=True)
+            import time
+            time.sleep(1)
+            print("\r", end="")  # 清除思考提示
+            
+            # 随机选择回复
+            response = random.choice(responses)
+            print(f"助手: {response}")
+            
+        except KeyboardInterrupt:
+            print("\n\n助手: 再见！感谢使用 Python Persona Engine！")
+            break
+        except EOFError:
+            print("\n\n助手: 再见！感谢使用 Python Persona Engine！")
+            break
+
+
 def show_features():
     """展示功能列表"""
     print("\n🎭 Python Persona Engine 功能列表")
@@ -160,14 +227,36 @@ def main():
     # 显示系统要求
     print_requirements()
     
-    # 检查是否有命令行参数
-    if len(sys.argv) > 1 and sys.argv[1] == "--no-ui":
-        return
+    # 检查tkinter状态
+    if not TKINTER_AVAILABLE:
+        print("\n⚠️  GUI 环境检测")
+        print("=" * 40)
+        print("tkinter 不可用，这通常发生在以下情况:")
+        print("1. 使用 pyenv 安装的 Python 没有 tkinter 支持")
+        print("2. 在服务器环境或 Docker 容器中运行")
+        print("3. macOS 上缺少 Tk 框架")
+        print("\n解决方案:")
+        print("- macOS: brew install python-tk 或重新安装 Python")
+        print("- 或者使用命令行模式: python run_example.py --console")
+        print("\n将自动使用命令行模式...")
     
-    # 运行简单演示
-    print("\n启动聊天演示界面...")
-    simple_text_chat()
+    # 检查是否有命令行参数
+    console_mode = False
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--no-ui":
+            return
+        elif sys.argv[1] in ["--console", "--cli"]:
+            console_mode = True
+    
+    # 如果没有tkinter或指定了命令行模式，使用命令行聊天
+    if not TKINTER_AVAILABLE or console_mode:
+        print("\n启动命令行聊天演示...")
+        simple_console_chat()
+    else:
+        # 运行GUI演示
+        print("\n启动GUI聊天演示界面...")
+        simple_text_chat()
 
 
 if __name__ == "__main__":
-    main() 
+    main()
