@@ -30,6 +30,7 @@ opencv-python>=4.8.0
 Pillow>=10.0.0
 pygame>=2.5.0
 customtkinter>=5.2.0
+live2d-py>=0.3.2
 
 # ========== 推流和输出 ==========
 mss>=9.0.0
@@ -56,4 +57,4 @@ marshmallow>=3.20.0
 # - numba (librosa依赖)
 # - tiktoken (openai-whisper依赖)
 # - joblib (scikit-learn依赖)
-# - more-itertools (openai-whisper依赖) 
+# - more-itertools (openai-whisper依赖)

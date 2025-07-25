@@ -2,7 +2,6 @@
 Live2D 管理器 - 负责 Live2D 模型的加载、渲染和动画控制
 """
 
-import ctypes
 import logging
 import asyncio
 import numpy as np
@@ -21,6 +20,8 @@ try:
     from PIL import Image
 except ImportError:
     logging.warning("OpenGL 或 PIL 库未安装，Live2D 功能将受限")
+
+from live2d.v3 import LAppModel, Model, init, dispose, glInit, glRelease  # 导入 live2d-py 相关模块
 
 from .hiyori_config import HiyoriConfig
 
@@ -94,17 +95,14 @@ class Live2DManager:
         
         self.logger = logging.getLogger(__name__)
         
-        # CubismSDK 相关
-        self._cubism_lib: Optional[ctypes.CDLL] = None
-        self._model_handle: Optional[ctypes.c_void_p] = None
-        self._allocated_model = None
+        # live2d-py 相关
+        self.model: Optional[LAppModel] = None
         
         # 模型配置
         self.model_config: Optional[Dict] = None
-        self.expressions: Dict[str, ExpressionEntry] = {}
-        self.motion_groups: Dict[str, List[MotionEntry]] = {}
-        self.parameters: Dict[str, int] = {}  # 参数名 -> 参数索引
-        self.parameter_values: Dict[str, float] = {}  # 当前参数值
+        self.expressions: Dict[str, Live2DExpression] = {}
+        self.motion_groups: Dict[str, List[Live2DMotion]] = {}
+        self.parameters: Dict[str, float] = {}  # 参数名 -> 当前值
         self.parameter_targets: Dict[str, float] = {}  # 目标参数值（用于平滑过渡）
         
         # 渲染相关
@@ -206,10 +204,6 @@ class Live2DManager:
         try:
             self.logger.info(f"初始化 Live2D 管理器 - 模型: {self.model_name}")
             
-            # 加载 CubismSDK
-            if not self._load_cubism_sdk():
-                return False
-            
             # 加载模型配置
             if not await self._load_model_config():
                 return False
@@ -218,18 +212,17 @@ class Live2DManager:
             if not self._initialize_opengl():
                 return False
             
-            # 加载模型
+            # 加载模型使用 live2d-py
             if not await self._load_model():
                 return False
             
-            # 加载纹理
-            if not await self._load_textures():
-                return False
+            # 加载纹理（如果需要，live2d-py 可能已处理）
+            await self._load_textures()
             
             # 初始化参数映射
             self._initialize_parameter_mapping()
             
-            # 加载表情和动作
+            # 加载表情和动作使用 live2d-py
             await self._load_expressions()
             await self._load_motions()
             
@@ -242,54 +235,6 @@ class Live2DManager:
         except Exception as e:
             self.logger.error(f"Live2D 管理器初始化失败: {e}")
             return False
-    
-    def _load_cubism_sdk(self) -> bool:
-        """加载 CubismSDK 动态库"""
-        try:
-            # 根据系统选择合适的动态库
-            import platform
-            system = platform.system()
-            
-            if system == "Windows":
-                lib_name = "Live2DCubismCore.dll"
-            elif system == "Darwin":  # macOS
-                lib_name = "libLive2DCubismCore.dylib"
-            else:  # Linux
-                lib_name = "libLive2DCubismCore.so"
-            
-            # 查找库文件
-            possible_paths = [
-                f"./libs/{lib_name}",
-                f"../libs/{lib_name}",
-                f"./resources/live2d/{lib_name}",
-                lib_name  # 系统路径
-            ]
-            
-            for path in possible_paths:
-                try:
-                    self._cubism_lib = ctypes.CDLL(path)
-                    self.logger.info(f"成功加载 CubismSDK: {path}")
-                    break
-                except OSError:
-                    continue
-            
-            if not self._cubism_lib:
-                self.logger.error("无法找到 CubismSDK 动态库")
-                return False
-            
-            # 设置函数签名
-            self._setup_cubism_functions()
-            return True
-            
-        except Exception as e:
-            self.logger.error(f"加载 CubismSDK 失败: {e}")
-            return False
-    
-    def _setup_cubism_functions(self):
-        """设置 CubismSDK 函数签名"""
-        # 这里需要根据实际的 CubismSDK C API 设置函数签名
-        # 由于没有实际的 SDK，这里只是示例结构
-        pass
     
     async def _load_model_config(self) -> bool:
         """加载模型配置"""
@@ -410,20 +355,26 @@ class Live2DManager:
             return None
     
     async def _load_model(self) -> bool:
-        """加载 Live2D 模型"""
+        """加载 Live2D 模型使用 live2d-py"""
         try:
-            # 这里需要调用 CubismSDK 加载 .moc3 文件
-            # 由于没有实际的 SDK 绑定，这里只是示例结构
-            
-            moc_file = self.model_path / self.model_config["FileReferences"]["Moc"]
-            if not moc_file.exists():
-                self.logger.error(f"Moc 文件不存在: {moc_file}")
+            model_file = self.model_path / f"{self.model_name}.model3.json"
+            if not model_file.exists():
+                self.logger.error(f"模型文件不存在: {model_file}")
                 return False
             
-            # 模拟加载模型
-            # self._model_handle = self._cubism_lib.LoadModel(str(moc_file))
+            # 初始化 live2d-py
+            init()
             
-            self.logger.info(f"成功加载模型: {moc_file}")
+            # 创建模型实例
+            self.model = LAppModel()
+            
+            # 加载模型
+            success = self.model.LoadModelJson(str(model_file))
+            if not success:
+                self.logger.error(f"模型加载失败: {model_file}")
+                return False
+            
+            self.logger.info(f"成功加载模型: {model_file}")
             return True
             
         except Exception as e:
@@ -431,7 +382,7 @@ class Live2DManager:
             return False
     
     async def _load_textures(self) -> bool:
-        """加载模型纹理"""
+        """加载模型纹理（如果 live2d-py 未自动处理）"""
         try:
             textures = self.model_config["FileReferences"]["Textures"]
             
@@ -464,29 +415,33 @@ class Live2DManager:
             return False
     
     def _initialize_parameter_mapping(self):
-        """初始化参数映射"""
+        """初始化参数映射使用 live2d-py 参数"""
         try:
-            # 从配置中获取所有参数
-            param_names = self.hiyori_config.get_all_parameter_names()
-            
-            # 模拟参数索引（在真实实现中，这些应该从 Cubism SDK 获取）
-            for i, param_name in enumerate(param_names):
-                self.parameters[param_name] = i
+            if self.model:
+                # 获取模型参数数量
+                param_count = self.model.GetParameterCount()
                 
-                # 初始化参数值
-                default_value = self.hiyori_config.get_parameter_default(param_name) or 0.0
-                self.parameter_values[param_name] = default_value
-                self.parameter_targets[param_name] = default_value
-                
-                # 更新 VBridger 映射
-                if param_name in self.vbridger_params:
-                    self.vbridger_params[param_name] = i
+                # 初始化参数映射
+                for i in range(param_count):
+                    param_id = self.model.GetParameterId(i)
+                    default_value = self.model.GetParameterDefaultValue(i)
+                    
+                    self.parameters[param_id] = default_value
+                    self.parameter_targets[param_id] = default_value
+                    
+                    # 更新 VBridger 映射
+                    if param_id in self.vbridger_params:
+                        self.vbridger_params[param_id] = i
             
             # 使用配置中的 VBridger 映射
             lipsync_mapping = self.hiyori_config.lipsync.vbridger_mapping
             for vb_param, live2d_param in lipsync_mapping.items():
                 if live2d_param in self.parameters:
-                    self.vbridger_params[live2d_param] = self.parameters[live2d_param]
+                    # 找到参数索引
+                    for i in range(self.model.GetParameterCount()):
+                        if self.model.GetParameterId(i) == live2d_param:
+                            self.vbridger_params[vb_param] = i
+                            break
             
             self.logger.info(f"初始化 {len(self.parameters)} 个参数映射")
             
@@ -494,24 +449,14 @@ class Live2DManager:
             self.logger.error(f"初始化参数映射失败: {e}")
     
     async def _load_expressions(self):
-        """加载表情"""
+        """加载表情使用 live2d-py"""    
         try:
-            if "Expressions" not in self.model_config.get("FileReferences", {}):
-                self.logger.warning("模型配置中未找到表情信息")
-                return
-            
-            expressions = self.model_config["FileReferences"]["Expressions"]
-            
-            for expr in expressions:
-                name = expr["Name"]
-                file_path = self.model_path / expr["File"]
-                
-                if file_path.exists():
-                    self.expressions[name] = ExpressionEntry(
-                        name=name,
-                        file_path=str(file_path)
-                    )
-                    self.logger.debug(f"加载表情: {name}")
+            expressions_dir = self.model_path / "expressions"
+            if expressions_dir.exists():
+                for expr_file in expressions_dir.glob('*.exp3.json'):
+                    name = expr_file.stem
+                    # 暂时存储表情文件路径，实际加载需要根据live2d-py的API
+                    self.expressions[name] = str(expr_file)
             
             self.logger.info(f"成功加载 {len(self.expressions)} 个表情")
             
@@ -519,29 +464,17 @@ class Live2DManager:
             self.logger.error(f"加载表情失败: {e}")
     
     async def _load_motions(self):
-        """加载动作"""
+        """加载动作使用 live2d-py"""
         try:
-            if "Motions" not in self.model_config.get("FileReferences", {}):
-                self.logger.warning("模型配置中未找到动作信息")
-                return
-            
-            motions = self.model_config["FileReferences"]["Motions"]
-            
-            for group_name, motion_list in motions.items():
-                self.motion_groups[group_name] = []
-                
-                for motion in motion_list:
-                    file_path = self.model_path / motion["File"]
-                    
-                    if file_path.exists():
-                        entry = MotionEntry(
-                            file_path=str(file_path),
-                            fade_in_time=motion.get("FadeInTime", 0.5),
-                            fade_out_time=motion.get("FadeOutTime", 0.5),
-                            sound_file=motion.get("Sound")
-                        )
-                        self.motion_groups[group_name].append(entry)
-                        self.logger.debug(f"加载动作: {group_name}/{motion['File']}")
+            motions_dir = self.model_path / "motions"
+            if motions_dir.exists():
+                for motion_file in motions_dir.rglob('*.motion3.json'):
+                    # 根据目录结构确定分组
+                    group = motion_file.parent.name if motion_file.parent != motions_dir else 'default'
+                    if group not in self.motion_groups:
+                        self.motion_groups[group] = []
+                    # 暂时存储动作文件路径，实际加载需要根据live2d-py的API
+                    self.motion_groups[group].append(str(motion_file))
             
             self.logger.info(f"成功加载 {len(self.motion_groups)} 个动作组")
             
@@ -715,25 +648,23 @@ class Live2DManager:
         pass
     
     def render(self) -> Optional[np.ndarray]:
-        """渲染模型并返回帧数据"""
+        """渲染模型并返回帧数据使用 live2d-py 渲染"""
         try:
             # 绑定帧缓冲
             gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.frame_buffer)
             gl.glViewport(0, 0, self.width, self.height)
-            
-            # 清空缓冲
-            gl.glClearColor(0.0, 0.0, 0.0, 0.0)  # 透明背景
+            gl.glClearColor(0.0, 0.0, 0.0, 0.0)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-            
-            # 启用混合
             gl.glEnable(gl.GL_BLEND)
             gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
             
-            # 渲染模型（如果有 SDK）
-            # if self._model_handle:
-            #     self._cubism_lib.RenderModel(self._model_handle)
+            if self.model:
+                # 更新模型
+                self.model.Update()
+                # 绘制模型
+                self.model.Draw()
             
-            # 读取帧缓冲数据
+            # 读取帧数据
             gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.frame_buffer)
             frame_data = gl.glReadPixels(0, 0, self.width, self.height, 
                                        gl.GL_RGBA, gl.GL_UNSIGNED_BYTE)
@@ -753,9 +684,27 @@ class Live2DManager:
             return None
     
     def _set_parameter(self, param_name: str, value: float):
-        """设置模型参数"""
+        """设置模型参数使用 live2d-py"""
         try:
-            # 检查参数范围
+            if self.model:
+                # 找到参数索引
+                param_index = -1
+                for i in range(self.model.GetParameterCount()):
+                    if self.model.GetParameterId(i) == param_name:
+                        param_index = i
+                        break
+                
+                if param_index >= 0:
+                    # 检查参数范围
+                    min_val = self.model.GetParameterMinimumValue(param_index)
+                    max_val = self.model.GetParameterMaximumValue(param_index)
+                    value = max(min_val, min(max_val, value))
+                    
+                    # 设置参数值
+                    self.model.SetParameterValue(param_index, value)
+                    self.parameters[param_name] = value
+            
+            # 检查配置中的参数范围
             param_range = self.hiyori_config.get_parameter_range(param_name)
             if param_range:
                 value = max(param_range[0], min(param_range[1], value))
@@ -765,13 +714,8 @@ class Live2DManager:
                 self.parameter_targets[param_name] = value
             else:
                 # 直接设置
-                self.parameter_values[param_name] = value
-            
-            # 调用 SDK 设置参数（如果有）
-            if param_name in self.parameters:
-                param_index = self.parameters[param_name]
-                # if self._model_handle:
-                #     self._cubism_lib.SetParameterValue(self._model_handle, param_index, value)
+                if param_name not in self.parameters:
+                    self.parameters[param_name] = value
                 
         except Exception as e:
             self.logger.error(f"设置参数失败 {param_name}: {e}")
@@ -898,6 +842,14 @@ class Live2DManager:
     async def cleanup(self):
         """清理资源"""
         try:
+            if self.model:
+                # live2d-py 模型清理
+                del self.model
+                self.model = None
+            
+            # 清理 live2d-py
+            dispose()
+            
             # 清理 OpenGL 资源
             if self.texture_handles:
                 gl.glDeleteTextures(len(self.texture_handles), self.texture_handles)
@@ -911,11 +863,7 @@ class Live2DManager:
             if self.color_texture:
                 gl.glDeleteTextures(1, [self.color_texture])
             
-            # 清理 Cubism 资源
-            # if self._model_handle and self._cubism_lib:
-            #     self._cubism_lib.ReleaseModel(self._model_handle)
-            
             self.logger.info("Live2D 资源清理完成")
             
         except Exception as e:
-            self.logger.error(f"清理 Live2D 资源失败: {e}") 
+            self.logger.error(f"清理 Live2D 资源失败: {e}")

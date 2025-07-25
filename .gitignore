@@ -56,9 +56,15 @@ cover/
 .venv
 env/
 venv/
+venv*/
 ENV/
 env.bak/
 venv.bak/
+# Python version specific virtual environments
+venv3*/
+venv311/
+venv312/
+.python-venv/
 
 # Spyder project settings
 .spyderproject
@@ -143,4 +149,4 @@ Thumbs.db
 
 # Run scripts (auto-generated)
 run.sh
-run.bat 
+run.bat
